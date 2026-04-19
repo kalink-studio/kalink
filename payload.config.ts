@@ -22,13 +22,9 @@ const databaseURL = isMigrationCommand
   ? process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL || ""
   : process.env.DATABASE_URL || "";
 
-const requiredS3EnvVars = ["S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"] as const;
-const missingS3EnvVars = requiredS3EnvVars.filter((name) => !process.env[name]);
-const hasS3Config = missingS3EnvVars.length === 0;
-
-if (isProduction && missingS3EnvVars.length > 0) {
-  throw new Error(`Missing required S3 environment variables: ${missingS3EnvVars.join(", ")}.`);
-}
+const hasS3Config = Boolean(
+  process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY,
+);
 
 const payloadSecret = process.env.PAYLOAD_SECRET;
 
