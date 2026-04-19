@@ -207,7 +207,7 @@
 - [ ] Copy `.github/workflows/ci.yaml`
 - [ ] Copy `.github/workflows/release.yaml`
 - [ ] Copy `.changeset/config.json`
-- [ ] Update image name to `ghcr.io/kalink-studio/kalink-studio`
+- [ ] Update image name to `ghcr.io/kalink-studio/kalink`
 - [ ] Verify workflow install steps use `pnpm`
 - [ ] Verify workflow build steps match repository scripts
 - [ ] Verify staging kustomization update path is correct

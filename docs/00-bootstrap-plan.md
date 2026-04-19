@@ -75,8 +75,6 @@ app/
   (payload)/
     admin/
     api/
-    graphql/
-    graphql-playground/
 ```
 
 This keeps the marketing site isolated from the CMS/admin runtime while still sharing a single Next.js application.

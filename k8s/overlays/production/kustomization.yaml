@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: production
+
+resources:
+  - ../../base
+  - sealedsecret.yaml
+  - migration-job.yaml
+
+patches:
+  - path: ingress-patch.yaml
+
+images:
+  - name: ghcr.io/kalink-studio/kalink
+    newTag: latest
+
+replicas:
+  - name: kalink-studio
+    count: 2

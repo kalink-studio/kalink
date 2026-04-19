@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kalink-studio
+  labels:
+    app: kalink-studio
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kalink-studio
+  template:
+    metadata:
+      labels:
+        app: kalink-studio
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: kalink-studio
+          image: ghcr.io/kalink-studio/kalink:latest
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: DATABASE_URL
+            - name: PAYLOAD_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: PAYLOAD_SECRET
+            - name: NEXT_PUBLIC_SITE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: NEXT_PUBLIC_SITE_URL
+            - name: PAYLOAD_PUBLIC_SERVER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: PAYLOAD_PUBLIC_SERVER_URL
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: S3_BUCKET
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: S3_ACCESS_KEY_ID
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: S3_SECRET_ACCESS_KEY
+            - name: S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: S3_ENDPOINT
+            - name: S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: S3_REGION
+            - name: S3_FORCE_PATH_STYLE
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: S3_FORCE_PATH_STYLE
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kalink-studio-secrets
+                  key: RESEND_API_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3

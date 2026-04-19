@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (commit SHA or version tag)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/kalink-studio/kalink
+
+jobs:
+  detect-release:
+    name: Detect Release Commit
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    outputs:
+      should_deploy: ${{ steps.detect.outputs.should_deploy }}
+      release_sha: ${{ steps.detect.outputs.release_sha }}
+
+    steps:
+      - name: Detect merged changeset release commit
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = context.payload.workflow_run
+
+            if (run.conclusion !== 'success' || run.event !== 'push' || run.head_branch !== 'main') {
+              core.setOutput('should_deploy', 'false')
+              core.setOutput('release_sha', '')
+              return
+            }
+
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: run.head_sha,
+            })
+
+            const releasePr = pulls.find((pull) => {
+              return pull.merged_at &&
+                pull.base?.ref === 'main' &&
+                pull.head?.ref?.startsWith('changeset-release/') &&
+                pull.merge_commit_sha === run.head_sha
+            })
+
+            core.setOutput('should_deploy', releasePr ? 'true' : 'false')
+            core.setOutput('release_sha', releasePr ? run.head_sha : '')
+
+  deploy-production:
+    name: Deploy to Production
+    if: github.event_name == 'workflow_run' && needs.detect-release.outputs.should_deploy == 'true'
+    needs: detect-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ needs.detect-release.outputs.release_sha }}
+
+      - name: Get version from package
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Get commit SHA for release
+        id: sha
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          SHORT_SHA=$(git rev-parse --short=7 "$COMMIT_SHA")
+          echo "short=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "full=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-tag image with version
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:${{ steps.sha.outputs.short }}
+          docker tag ${{ env.IMAGE_NAME }}:${{ steps.sha.outputs.short }} ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}
+          docker push ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}
+
+      - name: Update production kustomization
+        run: |
+          sed -i "s|newTag: .*|newTag: ${{ steps.version.outputs.tag }}|" k8s/overlays/production/kustomization.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add k8s/overlays/production/kustomization.yaml
+          if git diff --staged --quiet; then
+            echo "No production kustomization change to commit"
+            exit 0
+          fi
+          git commit -m "chore(production): deploy ${{ steps.version.outputs.tag }}"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+
+  manual-deploy:
+    name: Manual Deploy
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update kustomization
+        run: |
+          sed -i "s|newTag: .*|newTag: ${{ inputs.image_tag }}|" k8s/overlays/${{ inputs.environment }}/kustomization.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add k8s/overlays/${{ inputs.environment }}/kustomization.yaml
+          if git diff --staged --quiet; then
+            echo "No kustomization change to commit"
+            exit 0
+          fi
+          git commit -m "chore(${{ inputs.environment }}): deploy ${{ inputs.image_tag }} [manual]"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
