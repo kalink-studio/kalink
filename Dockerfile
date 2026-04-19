@@ -66,7 +66,7 @@ COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/migrations ./migrations
 COPY --from=deps /app/node_modules ./node_modules
 
-RUN mkdir .next && chown nextjs:nodejs .next
+RUN mkdir -p .next && chown nextjs:nodejs .next
 
 USER nextjs
 
