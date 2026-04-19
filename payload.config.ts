@@ -44,6 +44,27 @@ const cors = [process.env.NEXT_PUBLIC_SITE_URL, process.env.PAYLOAD_PUBLIC_SERVE
   (value): value is string => Boolean(value),
 );
 
+const plugins = hasS3Config
+  ? [
+      s3Storage({
+        bucket: process.env.S3_BUCKET || "kalink-studio-dev",
+        collections: {
+          media: true,
+        },
+        config: {
+          credentials: {
+            accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
+            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
+          },
+          endpoint: process.env.S3_ENDPOINT || "https://s3.pub2.infomaniak.cloud",
+          forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== "false",
+          region: process.env.S3_REGION || "us-east-1",
+        },
+        disableLocalStorage: true,
+      }),
+    ]
+  : [];
+
 export default buildConfig({
   admin: {
     importMap: {
@@ -65,25 +86,7 @@ export default buildConfig({
     disable: true,
   },
   globals: [SiteSettings],
-  plugins: [
-    s3Storage({
-      bucket: process.env.S3_BUCKET || "kalink-studio-dev",
-      collections: {
-        media: true,
-      },
-      config: {
-        credentials: {
-          accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
-          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
-        },
-        endpoint: process.env.S3_ENDPOINT || "https://s3.pub2.infomaniak.cloud",
-        forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== "false",
-        region: process.env.S3_REGION || "us-east-1",
-      },
-      disableLocalStorage: hasS3Config,
-      enabled: hasS3Config,
-    }),
-  ],
+  plugins,
   secret: payloadSecret || randomBytes(32).toString("hex"),
   sharp,
   typescript: {
