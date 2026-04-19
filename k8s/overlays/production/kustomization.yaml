@@ -10,6 +10,7 @@ resources:
 
 patches:
   - path: ingress-patch.yaml
+  - path: sealedsecret-patch.yaml
 
 images:
   - name: ghcr.io/kalink-studio/kalink
