@@ -15,7 +15,7 @@ patches:
 
 images:
   - name: ghcr.io/kalink-studio/kalink
-    newTag: 266dac6
+    newTag: a836224
 
 replicas:
   - name: kalink-studio
