@@ -3,6 +3,7 @@ kind: Job
 metadata:
   name: kalink-studio-migrate
   annotations:
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   backoffLimit: 1
