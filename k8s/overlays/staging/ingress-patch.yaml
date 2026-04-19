@@ -4,6 +4,9 @@ metadata:
   name: kalink-studio
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication required"
+    nginx.ingress.kubernetes.io/auth-secret: kalink-studio-staging-basic-auth
+    nginx.ingress.kubernetes.io/auth-type: basic
 spec:
   tls:
     - hosts:

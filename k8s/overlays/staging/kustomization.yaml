@@ -6,6 +6,7 @@ namespace: staging
 resources:
   - ../../base
   - sealedsecret.yaml
+  - basic-auth-sealedsecret.yaml
   - migration-job.yaml
 
 patches:
