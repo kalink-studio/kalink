@@ -17,7 +17,6 @@ const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 
 const isMigrationCommand = process.argv.some((arg) => arg.startsWith("migrate"));
-const isProduction = process.env.NODE_ENV === "production";
 const databaseURL = isMigrationCommand
   ? process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL || ""
   : process.env.DATABASE_URL || "";
@@ -27,10 +26,6 @@ const hasS3Config = Boolean(
 );
 
 const payloadSecret = process.env.PAYLOAD_SECRET;
-
-if (!payloadSecret && isProduction) {
-  throw new Error("Missing required environment variable: PAYLOAD_SECRET.");
-}
 
 if (!payloadSecret) {
   console.warn("PAYLOAD_SECRET is not set; using an ephemeral development secret.");
